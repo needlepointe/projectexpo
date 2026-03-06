@@ -30,7 +30,22 @@
       "Bash(git stash pop)",
       "Bash(gh pr:*)",
       "Bash(git add .claude/settings.local.json SESSION_LOGS.md)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git push origin master)",
+      "Bash(git push origin feature/strategy-tuning:feature/strategy-tuning)",
+      "Bash(git push origin HEAD:feature/strategy-tuning)",
+      "WebFetch(domain:x.com)",
+      "WebFetch(domain:www.youtube.com)",
+      "Bash(python main.py --backtest --strategy ab --symbol NVDA --days 730)",
+      "Bash(python main.py --backtest --strategy ab --symbol MSFT --days 730)",
+      "Bash(python main.py --backtest --strategy ab --symbol SPY --days 730)",
+      "Bash(python main.py --backtest --strategy ab --symbol JPM --days 730)",
+      "Bash(python main.py --backtest --strategy ab --symbol V --days 730)",
+      "Bash(python main.py --backtest --strategy ab --symbol META --days 730)",
+      "Bash(python main.py --backtest --strategy ab --symbol AAPL --days 730)",
+      "Bash(git add config/settings.yaml main.py src/backtesting/runner.py src/database.py src/execution/alpaca_client.py src/bots/ab_trader.py src/data/universe_scanner.py src/ml/ab_predictor.py src/monitoring/ab_tracker.py src/strategies/ab_strategy.py)",
+      "Bash(git push origin master:feature/ab-trader)",
+      "Bash(git add .claude/settings.local.json)"
     ]
   }
 }
