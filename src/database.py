@@ -100,6 +100,29 @@ def init_db():
 
             CREATE INDEX IF NOT EXISTS idx_trades_bot_date ON trades(bot_type, entry_time);
             CREATE INDEX IF NOT EXISTS idx_pdt_log_date ON pdt_log(bot_type, trade_date);
+
+            CREATE TABLE IF NOT EXISTS ab_picks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                symbol TEXT NOT NULL,
+                picked_at TEXT NOT NULL,
+                tweet_text TEXT,
+                was_predicted INTEGER DEFAULT 0,
+                bot_confidence REAL DEFAULT 0,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS ab_predictions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                symbol TEXT NOT NULL,
+                predicted_at TEXT NOT NULL,
+                confidence REAL,
+                signal_reason TEXT,
+                ab_picked INTEGER DEFAULT 0,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_ab_picks_symbol ON ab_picks(symbol, picked_at);
+            CREATE INDEX IF NOT EXISTS idx_ab_predictions_symbol ON ab_predictions(symbol, predicted_at);
         """)
     logger.info("Database initialized at %s", db_path)
 

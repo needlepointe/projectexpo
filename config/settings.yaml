@@ -44,8 +44,24 @@ day_trader:
 swing_trader:
   enabled: true
 
-  # Universe
-  universe: "both"                # "sp500", "russell2000", or "both"
+  # Curated symbol watchlist — only trade symbols validated by backtesting.
+  # SPY and NVDA passed (≥40% win rate, positive expectancy, Sharpe >1.0).
+  # MSFT showed positive expectancy across 2 years. AAPL included but
+  # watch direction breakdown — its longs need MA200 confirmation which
+  # the bot enforces via the TA signal logic.
+  # Set to [] to fall back to full universe scan (not recommended until
+  # more symbols are validated).
+  symbols:
+    - SPY    # 50% win rate, positive expectancy — broad market, clean MA structure
+    - NVDA   # 50% win rate, +$0.61 expectancy, Sharpe 2.65
+    - MSFT   # 44-83% win rate across runs, consistently positive expectancy
+    - JPM    # 50% win rate, +$1.27 expectancy, Sharpe 5.88 — financials diversify tech exposure
+    - V      # 75% win rate, +$2.00 expectancy, Sharpe 14.41 — strongest performer
+    # Excluded after backtesting: AAPL (inconsistent), TSLA (20% win rate), AMZN (-expectancy),
+    # GOOGL/META (0 trades generated — too filtered), QQQ (1 trade only)
+
+  # Universe (used only if symbols list above is empty)
+  universe: "sp500"               # "sp500", "russell2000", or "both"
   min_market_cap: 500000000       # $500M
 
   # Hold time
@@ -61,6 +77,38 @@ swing_trader:
 
   # ML
   ml_confidence_threshold: 0.55
+
+ab_trader:
+  enabled: true
+  starting_capital: 1000.0
+
+  # Universe — full US market scan
+  universe: "full_us"
+  min_price: 5.0
+  max_price: 2000.0
+  min_avg_volume: 200000
+  max_symbols_per_scan: 200     # Top N by momentum pre-filter
+
+  # Hold time (swing-style, 2-10 days)
+  min_hold_days: 2
+  max_hold_days: 10
+
+  # AB-style signal thresholds
+  fib_zone_tolerance: 0.01      # Within 1% of fib level counts as "at zone"
+  breakout_volume_ratio: 1.5    # Volume must be 1.5x avg on breakouts
+  abc_b_wave_min_retrace: 0.38  # B wave must retrace at least 38% of A
+  abc_b_wave_max_retrace: 0.78  # B wave retraces at most 78% of A
+
+  # Twitter monitoring for AB's picks
+  twitter_monitor: true
+  twitter_handle: "ABTradess"
+
+  # Weekly performance target (10% tracked and reported each week)
+  weekly_target_pct: 0.10
+
+  # ML
+  ml_confidence_threshold: 0.55
+  ml_retrain_frequency_days: 7
 
 options:
   enabled: false                  # Toggle options trading on/off

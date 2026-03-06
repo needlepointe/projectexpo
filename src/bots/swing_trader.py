@@ -76,9 +76,17 @@ class SwingTraderBot(BaseBot):
     # ------------------------------------------------------------------
 
     def _scan_and_trade(self):
-        universe = self._data.get_universe(self._cfg.get("universe", "sp500"))
-        # Limit scan to 50 symbols per cycle to avoid rate limits
-        universe = universe[:50]
+        # Use curated watchlist if configured, otherwise fall back to universe scan.
+        # Watchlist only contains symbols validated by backtesting — avoids trading
+        # names with no backtested edge.
+        watchlist = self._cfg.get("symbols", [])
+        if watchlist:
+            universe = watchlist
+            logger.info("[SWING] Using curated watchlist: %s", universe)
+        else:
+            universe = self._data.get_universe(self._cfg.get("universe", "sp500"))
+            # Limit scan to 50 symbols per cycle to avoid rate limits
+            universe = universe[:50]
 
         bars = self._data.get_daily_bars(universe, lookback_days=60)
         if not bars:

@@ -50,6 +50,7 @@ def run_bots(bot_arg: str):
     logger.info("TRADING SYSTEM STARTING [%s]", mode)
     logger.info("Day capital:   $%.2f", cfg["account"]["starting_capital_day"])
     logger.info("Swing capital: $%.2f", cfg["account"]["starting_capital_swing"])
+    logger.info("AB capital:    $%.2f", cfg.get("ab_trader", {}).get("starting_capital", 1000.0))
     logger.info("PDT limit:     %d/5 days", cfg["pdt"]["max_day_trades_per_5_days"])
     logger.info("=" * 60)
 
@@ -123,6 +124,39 @@ def run_bots(bot_arg: str):
 
         logger.info("[SWING] Scheduled: position check every 30min, EOD scan @4:05 ET")
 
+    # -- AB Trader --
+    if bot_arg in ("ab", "both") and cfg.get("ab_trader", {}).get("enabled", False):
+        from src.bots.ab_trader import ABTraderBot
+        ab_bot = ABTraderBot()
+        ab_bot.start()
+        bots.append(ab_bot)
+
+        # Market open: reset risk, check AB's overnight tweets
+        scheduler.add_job(
+            ab_bot.on_market_open,
+            CronTrigger(day_of_week="mon-fri", hour=9, minute=45, timezone=ET),
+            id="ab_open",
+            name="AB Trader Open",
+        )
+
+        # EOD scan at 4:10 PM ET (after swing at 4:05, before daily report at 4:30)
+        scheduler.add_job(
+            ab_bot.on_market_close,
+            CronTrigger(day_of_week="mon-fri", hour=16, minute=10, timezone=ET),
+            id="ab_scan",
+            name="AB Trader EOD Scan",
+        )
+
+        # Position check every 30 min during market hours
+        scheduler.add_job(
+            ab_bot.run_cycle,
+            CronTrigger(day_of_week="mon-fri", hour="10-15", minute="0,30", timezone=ET),
+            id="ab_check",
+            name="AB Position Check",
+        )
+
+        logger.info("[AB] Scheduled: position check every 30min, EOD scan @4:10 ET")
+
     # -- Daily report --
     scheduler.add_job(
         reporter.generate_daily_report,
@@ -154,9 +188,9 @@ def run_backtest(strategy: str, symbol: str, days: int):
     print(result.summary())
 
     if result.passes_targets(strategy):
-        print(f"\n✓ READY FOR PAPER TRADING — All targets met")
+        print(f"\n[READY] READY FOR PAPER TRADING -- All targets met")
     else:
-        print(f"\n✗ NOT READY — Review strategy parameters")
+        print(f"\n[NOT READY] Review strategy parameters")
 
     return result
 
@@ -249,15 +283,19 @@ def emergency_kill():
 
 def main():
     parser = argparse.ArgumentParser(description="AI Trading System")
-    parser.add_argument("--bot", choices=["day", "swing", "both"], default="both")
+    parser.add_argument("--bot", choices=["day", "swing", "ab", "both"], default="both")
     parser.add_argument("--backtest", action="store_true", help="Run backtesting")
-    parser.add_argument("--strategy", choices=["day", "swing"], default="day")
+    parser.add_argument("--strategy", choices=["day", "swing", "ab"], default="day")
     parser.add_argument("--symbol", default="SPY", help="Symbol for backtest/train")
     parser.add_argument("--days", type=int, default=365, help="Lookback days for backtest")
     parser.add_argument("--train", action="store_true", help="Train ML models")
     parser.add_argument("--report", action="store_true", help="Generate daily report")
     parser.add_argument("--status", action="store_true", help="Show account status")
     parser.add_argument("--kill", action="store_true", help="Emergency kill switch")
+    parser.add_argument("--log-ab-pick", metavar="SYMBOL",
+                        help="Manually log a stock AB picked (for ML training)")
+    parser.add_argument("--ab-accuracy", action="store_true",
+                        help="Show AB tracker accuracy report")
 
     args = parser.parse_args()
 
@@ -278,6 +316,19 @@ def main():
         run_backtest(args.strategy, args.symbol, args.days)
     elif args.train:
         run_training(args.strategy)
+    elif args.log_ab_pick:
+        from src.monitoring.ab_tracker import ABTracker
+        init_db()
+        tracker = ABTracker()
+        result = tracker.log_ab_pick(args.log_ab_pick.upper())
+        hit = "HIT (bot predicted it!)" if result["was_predicted"] else "MISS (bot did not predict)"
+        print(f"\n[AB PICK LOGGED] {args.log_ab_pick.upper()} — {hit}")
+        if result["was_predicted"]:
+            print(f"  Bot confidence was: {result['bot_confidence']:.1%}")
+    elif args.ab_accuracy:
+        from src.monitoring.ab_tracker import ABTracker
+        init_db()
+        ABTracker().print_accuracy_report()
     else:
         # Default: run the live/paper trading bots
         run_bots(args.bot)
