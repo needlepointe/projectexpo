@@ -1,0 +1,15 @@
+.env
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+*.db
+logs/
+models/*.pkl
+models/*.joblib
+.DS_Store

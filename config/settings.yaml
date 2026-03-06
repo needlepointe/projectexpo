@@ -1,0 +1,119 @@
+## Trading System Configuration
+## All parameters live here — no hardcoding in source files
+
+account:
+  starting_capital_day: 500.0
+  starting_capital_swing: 500.0
+  paper_trading: true  # ALWAYS start true; flip to false only after 2 profitable paper weeks
+
+pdt:
+  max_day_trades_per_5_days: 3
+  rolling_period_days: 5
+
+risk:
+  max_risk_per_trade_pct: 0.01    # 1% default; max 2%
+  max_position_size_pct: 0.20     # 20% of capital per stock
+  daily_loss_limit_pct: 0.05      # 5% daily loss → trading pauses
+  hard_stop_loss_pct: 0.10        # 10% single-day loss → bot halts
+  min_reward_risk_ratio: 2.0      # Minimum 2:1 R:R on every trade
+
+day_trader:
+  enabled: true
+  trading_start: "09:45"          # ET — skip open volatility
+  trading_end: "15:45"            # ET — no new entries after this
+  force_close_time: "15:55"       # ET — hard exit all positions
+
+  # Universe filters
+  min_price: 5.0
+  max_price: 500.0
+  min_avg_daily_volume: 1000000
+  avoid_earnings_within_days: 2
+  min_relative_volume: 1.5        # Must be 1.5x normal volume
+
+  # Indicators
+  rsi_period: 14
+  rsi_overbought: 70
+  rsi_oversold: 30
+  rsi_momentum_min: 50            # RSI > 50 required for long entries
+  vwap_deviation_pct: 0.002       # Within 0.2% of VWAP for entry
+  volume_ma_period: 20
+
+  # ML
+  ml_confidence_threshold: 0.60
+
+swing_trader:
+  enabled: true
+
+  # Universe
+  universe: "both"                # "sp500", "russell2000", or "both"
+  min_market_cap: 500000000       # $500M
+
+  # Hold time
+  min_hold_days: 2
+  max_hold_days: 10
+
+  # Indicators
+  ma_short: 20                    # 20-day MA for pullback entries
+  ma_long: 50                     # 50-day MA for trend direction
+  rsi_period: 14
+  rsi_pullback_max: 45            # RSI ≤ 45 = valid pullback
+  breakout_volume_ratio: 1.3      # Volume must be 1.3x avg on breakouts
+
+  # ML
+  ml_confidence_threshold: 0.55
+
+options:
+  enabled: false                  # Toggle options trading on/off
+  max_contracts_per_trade: 1
+  preferred_delta: 0.30           # ~30-delta options
+  min_dte: 7                      # Minimum days to expiration
+  max_dte: 30                     # Maximum days to expiration
+  max_iv_percentile: 50           # Avoid buying expensive high-IV options
+  stop_loss_pct: 0.50             # Close option at 50% premium loss
+
+ml:
+  enabled: true
+  model_type: "random_forest"     # random_forest or gradient_boosting
+  n_estimators: 200
+  max_depth: 8
+  retrain_frequency_days: 7
+  training_lookback_days: 365
+  min_training_samples: 200
+  min_confidence: 0.55
+
+  # Features used for signal prediction
+  features:
+    - rsi_14
+    - macd
+    - macd_signal
+    - bb_upper_pct
+    - bb_lower_pct
+    - volume_ratio_20
+    - vwap_deviation
+    - price_momentum_5
+    - price_momentum_10
+    - atr_pct
+
+  # Label generation
+  forward_return_bars: 6          # Bars ahead to measure return (6 x 5min = 30 min ahead)
+  bullish_threshold: 0.002        # 0.2% gain = bullish label (realistic for 5-min SPY bars)
+  bearish_threshold: -0.002       # 0.2% loss = bearish label
+
+backtesting:
+  lookback_days: 365
+  commission_per_share: 0.0       # Alpaca is commission-free
+  slippage_pct: 0.001            # 0.1% simulated slippage
+  initial_capital_day: 500.0
+  initial_capital_swing: 500.0
+  benchmark_symbol: "SPY"
+
+monitoring:
+  log_dir: "logs"
+  db_path: "data/trades.db"
+  model_dir: "models"
+  daily_report_time: "16:30"
+  email_alerts_enabled: false
+  email_to: ""
+  email_from: ""
+  smtp_server: ""
+  smtp_port: 587

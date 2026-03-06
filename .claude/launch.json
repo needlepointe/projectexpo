@@ -1,0 +1,35 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "day-trader",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["main.py", "--bot", "day"],
+      "port": 0
+    },
+    {
+      "name": "swing-trader",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["main.py", "--bot", "swing"],
+      "port": 0
+    },
+    {
+      "name": "both-bots",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["main.py", "--bot", "both"],
+      "port": 0
+    },
+    {
+      "name": "backtest-day",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["main.py", "--backtest", "--strategy", "day", "--symbol", "QQQ", "--days", "365"],
+      "port": 0
+    },
+    {
+      "name": "backtest-swing",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["main.py", "--backtest", "--strategy", "swing", "--symbol", "AAPL", "--days", "365"],
+      "port": 0
+    }
+  ]
+}

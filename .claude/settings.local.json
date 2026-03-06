@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(if [ -f \"/c/Users/Nick/projectexpo/CLAUDE.md\" ])",
+      "Bash(then)",
+      "Bash(else)",
+      "Bash(fi)",
+      "Bash(git config --global --add safe.directory C:/Users/Nick/projectexpo)",
+      "Bash(git -C C:/Users/Nick/projectexpo status)",
+      "Bash(git -C C:/Users/Nick/projectexpo log --oneline -5)",
+      "Bash(git -C C:/Users/Nick/projectexpo remote -v)",
+      "Bash(gh auth status)",
+      "Bash(where gh)",
+      "Bash(git -C C:/Users/Nick/projectexpo add .claude/settings.local.json)",
+      "Bash(Remove-Item \"C:/Users/Nick/projectexpo/.git/index.lock\" -Force)"
+    ]
+  }
+}
