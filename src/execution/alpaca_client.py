@@ -31,9 +31,29 @@ LIVE_URL = "https://api.alpaca.markets"
 
 
 class AlpacaClient:
-    def __init__(self):
-        api_key, secret_key = get_alpaca_credentials()
-        paper = is_paper_trading()
+    def __init__(
+        self,
+        api_key: str | None = None,
+        secret_key: str | None = None,
+        paper: bool | None = None,
+    ):
+        """
+        Initialize Alpaca trading client.
+
+        Args:
+            api_key:    Override API key (e.g. for a separate AB account).
+                        Defaults to ALPACA_API_KEY env var.
+            secret_key: Override secret key. Defaults to ALPACA_SECRET_KEY env var.
+            paper:      Override paper trading flag. Defaults to config setting.
+        """
+        if api_key is None or secret_key is None:
+            env_key, env_secret = get_alpaca_credentials()
+            api_key = api_key or env_key
+            secret_key = secret_key or env_secret
+
+        if paper is None:
+            paper = is_paper_trading()
+
         url = PAPER_URL if paper else LIVE_URL
         self._client = TradingClient(
             api_key=api_key,

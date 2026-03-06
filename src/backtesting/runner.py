@@ -121,7 +121,7 @@ class BacktestResult:
         return "\n".join(lines)
 
     def passes_targets(self, strategy: str = "day") -> bool:
-        win_target = 45.0 if strategy == "day" else 40.0
+        win_target = 45.0 if strategy == "day" else 40.0  # "ab" and "swing" both use 40%
         return (
             self.win_rate >= win_target
             and self.max_drawdown_pct <= 15.0
@@ -161,8 +161,11 @@ class Backtester:
         if end is None:
             end = datetime.now(ET)
         if initial_capital is None:
-            key = f"initial_capital_{strategy}"
-            initial_capital = self._bt_cfg.get(key, 500.0)
+            if strategy == "ab":
+                initial_capital = get_config().get("ab_trader", {}).get("starting_capital", 1000.0)
+            else:
+                key = f"initial_capital_{strategy}"
+                initial_capital = self._bt_cfg.get(key, 500.0)
 
         logger.info("Backtesting %s on %s from %s to %s", strategy, symbol, start.date(), end.date())
 
@@ -175,7 +178,7 @@ class Backtester:
         # on 5-min) and produce far fewer false signals (26 bars/day vs 78).
         if strategy == "day":
             tf = TimeFrame(15, TimeFrameUnit.Minute)
-        else:
+        else:  # "swing" or "ab" — both use daily bars
             tf = TimeFrame.Day
 
         df = self._data.get_historical_bars(symbol, tf, start, end)
@@ -239,6 +242,9 @@ class Backtester:
     ) -> list[BacktestTrade]:
         """Bar-by-bar simulation."""
         df = compute_features(df)
+        # Precompute AB-specific features for "ab" strategy
+        if strategy == "ab":
+            df = self._precompute_ab_features(df)
         slippage = self._bt_cfg.get("slippage_pct", 0.001)
         commission = self._bt_cfg.get("commission_per_share", 0.0)
         risk_pct = self._risk_cfg.get("max_risk_per_trade_pct", 0.01)
@@ -321,8 +327,8 @@ class Backtester:
                         open_trade = None
                         continue
 
-                # Max hold for swing
-                if strategy == "swing" and (i - open_trade.entry_bar) >= 10:
+                # Max hold for swing / ab
+                if strategy in ("swing", "ab") and (i - open_trade.entry_bar) >= 10:
                     open_trade = self._close_trade(open_trade, i, price, "max_hold")
                     capital += open_trade.pnl
                     trades.append(open_trade)
@@ -385,7 +391,11 @@ class Backtester:
                     # while losses always hit the full 2×ATR stop (expectancy went negative).
                     if strategy == "day":
                         stop_mult, target_mult = 2.0, 4.0
-                    else:
+                    elif strategy == "ab":
+                        # 1.5×ATR stop gives NVDA/volatile stocks room to breathe.
+                        # 3×ATR target maintains the 2:1 R:R.
+                        stop_mult, target_mult = 1.5, 3.0
+                    else:  # "swing" — 1×ATR stop, 2×ATR target (reachable in 2-5 days)
                         stop_mult, target_mult = 1.0, 2.0
 
                     if ta_signal == 1:
@@ -474,6 +484,9 @@ class Backtester:
                 return 1
             if vwap_cross_dn and in_downtrend and macd_hist < 0 and has_volume and rsi_change < 0 and bearish_candle:
                 return -1
+        elif strategy == "ab":
+            return self._get_ta_signal_ab(bar)
+
         else:  # swing
             ma200 = float(bar.get("ma_200", 0))
             uptrend = ma20 > ma50 and ma20 > 0 and ma50 > 0
@@ -500,6 +513,145 @@ class Backtester:
             near_ma20_resistance = abs(price - ma20) / ma20 < 0.03 if ma20 > 0 else False
             if downtrend and near_ma20_resistance and 48 <= rsi <= 70 and macd_hist < 0:
                 return -1
+        return 0
+
+    def _precompute_ab_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Precompute AB strategy-specific features on the full DataFrame.
+        Called once before simulation to avoid per-bar recalculation overhead.
+
+        AB's primary signal: EMA20 pullback + bounce in primary uptrend.
+        Secondary signal: breakout above 20-bar high with volume confirmation.
+        """
+        df = df.copy()
+        close = df["close"]
+        high = df["high"]
+        low = df["low"]
+        volume = df["volume"] if "volume" in df.columns else pd.Series(1.0, index=df.index)
+        vol_ma = volume.rolling(20, min_periods=1).mean()
+        vol_ratio = (volume / vol_ma).fillna(1.0)
+
+        # Exponential MAs — more responsive than SMA for AB's style
+        ema20 = close.ewm(span=20, adjust=False).mean()
+        ema50 = close.ewm(span=50, adjust=False).mean()
+        ema200 = close.ewm(span=200, adjust=False).mean()
+        df["ema_20"] = ema20
+        df["ema_50"] = ema50
+        df["ema_200"] = ema200
+
+        # EMA20 touch: price within 2% of EMA20 and at or above it (bounce confirmation)
+        # This is the primary AB entry condition — pullback to the 20 EMA in uptrend
+        df["near_ema20"] = (abs(close - ema20) / ema20.clip(lower=0.01)) < 0.02
+        df["bounced_ema20"] = close >= ema20 * 0.99   # Price held at EMA20
+
+        # EMA20 resistance for shorts: price bounced up to declining EMA20 from below
+        df["at_ema20_resistance"] = (abs(close - ema20) / ema20.clip(lower=0.01)) < 0.02
+
+        # Breakout: close above 20-bar rolling high (prior bars only) with volume surge
+        prior_high_20 = high.shift(1).rolling(19, min_periods=10).max()
+        breakout_vol = get_config().get("ab_trader", {}).get("breakout_volume_ratio", 1.5)
+        df["is_breakout_bull"] = (close > prior_high_20) & (vol_ratio >= breakout_vol)
+
+        # Fibonacci zone: price in 38.2–61.8% retracement of rolling 30-bar swing range
+        # Used as an additional confirmation — not the primary filter
+        roll_high = high.rolling(30, min_periods=10).max()
+        roll_low = low.rolling(30, min_periods=10).min()
+        fib_range = (roll_high - roll_low).clip(lower=0.001)
+        fib_38 = roll_high - fib_range * 0.382
+        fib_62 = roll_high - fib_range * 0.618
+        tol = get_config().get("ab_trader", {}).get("fib_zone_tolerance", 0.015)
+        df["at_fib_support"] = (close >= fib_62 * (1 - tol)) & (close <= fib_38 * (1 + tol))
+
+        # Market structure: higher low (uptrend intact)
+        df["higher_low"] = low > low.shift(5)
+        df["lower_high"] = high < high.shift(5)
+
+        # EMA20 slope: EMA20 must be rising for longs (trend healthy, not topping)
+        df["ema20_rising"] = ema20 > ema20.shift(3)
+        df["ema20_falling"] = ema20 < ema20.shift(3)
+
+        # RSI recovered: RSI rising from recent low (momentum returning after pullback)
+        rsi = df.get("rsi_14", pd.Series(50.0, index=df.index))
+        if "rsi_14" in df.columns:
+            rsi = df["rsi_14"]
+        df["rsi_rising"] = rsi > rsi.shift(2)
+
+        return df
+
+    def _get_ta_signal_ab(self, bar: pd.Series) -> int:
+        """
+        AB Trades TA signal for backtesting.
+
+        PRIMARY (EMA20 Pullback):
+          - EMA20 > EMA50 (short-term uptrend)
+          - price > EMA200 (primary bull trend)
+          - Price within 2% of EMA20 and held above it (bounce)
+          - RSI 35-55 (pullback without deeply oversold)
+          - MACD not deeply negative (momentum not broken)
+          - Optional: at Fibonacci support zone
+
+        SECONDARY (Breakout):
+          - EMA20 > EMA50, price > EMA200
+          - Close above 20-bar high with volume >= 1.5x
+          - RSI >= 48
+
+        SHORT:
+          - EMA20 < EMA50, price < EMA200
+          - Price at EMA20 resistance from below
+          - RSI 52-70, MACD hist < 0
+        """
+        price = float(bar["close"])
+        ema20 = float(bar.get("ema_20", 0))
+        ema50 = float(bar.get("ema_50", 0))
+        ema200 = float(bar.get("ema_200", 0))
+        rsi = float(bar.get("rsi_14", 50))
+        macd_hist = float(bar.get("macd_hist", 0))
+
+        near_ema20 = bool(bar.get("near_ema20", False))
+        bounced_ema20 = bool(bar.get("bounced_ema20", False))
+        at_ema20_resistance = bool(bar.get("at_ema20_resistance", False))
+        is_breakout = bool(bar.get("is_breakout_bull", False))
+        at_fib_support = bool(bar.get("at_fib_support", False))
+        higher_low = bool(bar.get("higher_low", True))
+        lower_high = bool(bar.get("lower_high", True))
+        rsi_rising = bool(bar.get("rsi_rising", True))
+        ema20_rising = bool(bar.get("ema20_rising", True))
+        ema20_falling = bool(bar.get("ema20_falling", True))
+
+        # Trend structure (EMA-based — more responsive than MA)
+        uptrend = ema20 > 0 and ema50 > 0 and ema20 > ema50
+        primary_bull = ema200 > 0 and price > ema200
+        downtrend = ema20 > 0 and ema50 > 0 and ema20 < ema50
+        primary_bear = ema200 > 0 and price < ema200
+
+        # LONG — Primary: EMA20 pullback + bounce
+        # EMA20 must be rising: rules out entries during EMA20 rollover (early downtrend)
+        ema20_pullback = (
+            near_ema20          # Within 2% of EMA20
+            and bounced_ema20   # Price at or above EMA20 (not falling through)
+            and ema20_rising    # EMA20 is still pointing up (trend not reversing)
+            and 33 <= rsi <= 57 # Pulled back but not deeply oversold
+            and rsi_rising      # Momentum recovering
+            and macd_hist > -0.5  # MACD not deeply negative
+        )
+
+        # LONG — Secondary: breakout above 20-day high with volume
+        breakout_long = is_breakout and rsi >= 48
+
+        if uptrend and primary_bull and (ema20_pullback or breakout_long):
+            return 1
+
+        # SHORT — EMA20 resistance in downtrend (EMA20 must be falling = confirmed downtrend)
+        ema20_short = (
+            at_ema20_resistance
+            and ema20_falling    # EMA20 pointing down = confirmed downtrend
+            and 52 <= rsi <= 70
+            and macd_hist < 0
+            and lower_high       # Structure: lower highs confirming downtrend
+        )
+        if downtrend and primary_bear and ema20_short:
+            return -1
+
         return 0
 
     @staticmethod
