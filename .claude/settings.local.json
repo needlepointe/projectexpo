@@ -12,7 +12,14 @@
       "Bash(gh auth status)",
       "Bash(where gh)",
       "Bash(git -C C:/Users/Nick/projectexpo add .claude/settings.local.json)",
-      "Bash(Remove-Item \"C:/Users/Nick/projectexpo/.git/index.lock\" -Force)"
+      "Bash(Remove-Item \"C:/Users/Nick/projectexpo/.git/index.lock\" -Force)",
+      "Bash(git -C:*)",
+      "Bash(python main.py --backtest --strategy swing --symbol GOOGL --days 730)",
+      "Bash(python main.py --backtest --strategy swing --symbol JPM --days 730)",
+      "Bash(python main.py --backtest --strategy swing --symbol AMZN --days 730)",
+      "Bash(python main.py --backtest --strategy swing --symbol TSLA --days 730)",
+      "Bash(python main.py --backtest --strategy swing --symbol V --days 730)",
+      "Bash(python main.py --backtest --strategy swing --symbol QQQ --days 730)"
     ]
   }
 }
