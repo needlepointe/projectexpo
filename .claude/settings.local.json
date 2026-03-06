@@ -19,7 +19,18 @@
       "Bash(python main.py --backtest --strategy swing --symbol AMZN --days 730)",
       "Bash(python main.py --backtest --strategy swing --symbol TSLA --days 730)",
       "Bash(python main.py --backtest --strategy swing --symbol V --days 730)",
-      "Bash(python main.py --backtest --strategy swing --symbol QQQ --days 730)"
+      "Bash(python main.py --backtest --strategy swing --symbol QQQ --days 730)",
+      "Bash(git checkout -b main 7c06157)",
+      "Bash(git push origin main)",
+      "Bash(git checkout -b feature/strategy-tuning master)",
+      "Bash(git push origin feature/strategy-tuning)",
+      "Bash(git stash)",
+      "Bash(git checkout -b feature/strategy-tuning 85d56cc)",
+      "Bash(git checkout master)",
+      "Bash(git stash pop)",
+      "Bash(gh pr:*)",
+      "Bash(git add .claude/settings.local.json SESSION_LOGS.md)",
+      "Bash(git commit:*)"
     ]
   }
 }
