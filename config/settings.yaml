@@ -44,8 +44,24 @@ day_trader:
 swing_trader:
   enabled: true
 
-  # Universe
-  universe: "both"                # "sp500", "russell2000", or "both"
+  # Curated symbol watchlist — only trade symbols validated by backtesting.
+  # SPY and NVDA passed (≥40% win rate, positive expectancy, Sharpe >1.0).
+  # MSFT showed positive expectancy across 2 years. AAPL included but
+  # watch direction breakdown — its longs need MA200 confirmation which
+  # the bot enforces via the TA signal logic.
+  # Set to [] to fall back to full universe scan (not recommended until
+  # more symbols are validated).
+  symbols:
+    - SPY    # 50% win rate, positive expectancy — broad market, clean MA structure
+    - NVDA   # 50% win rate, +$0.61 expectancy, Sharpe 2.65
+    - MSFT   # 44-83% win rate across runs, consistently positive expectancy
+    - JPM    # 50% win rate, +$1.27 expectancy, Sharpe 5.88 — financials diversify tech exposure
+    - V      # 75% win rate, +$2.00 expectancy, Sharpe 14.41 — strongest performer
+    # Excluded after backtesting: AAPL (inconsistent), TSLA (20% win rate), AMZN (-expectancy),
+    # GOOGL/META (0 trades generated — too filtered), QQQ (1 trade only)
+
+  # Universe (used only if symbols list above is empty)
+  universe: "sp500"               # "sp500", "russell2000", or "both"
   min_market_cap: 500000000       # $500M
 
   # Hold time

@@ -154,9 +154,9 @@ def run_backtest(strategy: str, symbol: str, days: int):
     print(result.summary())
 
     if result.passes_targets(strategy):
-        print(f"\n✓ READY FOR PAPER TRADING — All targets met")
+        print(f"\n[READY] READY FOR PAPER TRADING -- All targets met")
     else:
-        print(f"\n✗ NOT READY — Review strategy parameters")
+        print(f"\n[NOT READY] Review strategy parameters")
 
     return result
 
