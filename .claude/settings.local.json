@@ -45,7 +45,13 @@
       "Bash(python main.py --backtest --strategy ab --symbol AAPL --days 730)",
       "Bash(git add config/settings.yaml main.py src/backtesting/runner.py src/database.py src/execution/alpaca_client.py src/bots/ab_trader.py src/data/universe_scanner.py src/ml/ab_predictor.py src/monitoring/ab_tracker.py src/strategies/ab_strategy.py)",
       "Bash(git push origin master:feature/ab-trader)",
-      "Bash(git add .claude/settings.local.json)"
+      "Bash(git add .claude/settings.local.json)",
+      "Bash(python -c \"import tweepy; print\\(''tweepy version:'', tweepy.__version__\\)\")",
+      "Bash(pip install tweepy -q)",
+      "Bash(python -c \"import tweepy; print\\(''tweepy'', tweepy.__version__, ''installed''\\)\")",
+      "Bash(python -c \":*)",
+      "Bash(pip install ntscraper -q)",
+      "Bash(git add requirements.txt .claude/settings.local.json)"
     ]
   }
 }

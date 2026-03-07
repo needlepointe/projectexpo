@@ -8,5 +8,6 @@ python-dotenv>=1.0.0
 apscheduler>=3.10.4
 pytz>=2023.3
 requests>=2.31.0
+tweepy>=4.14.0              # Twitter/X API for AB tracker (Basic plan $100/mo required)
 pytest>=7.4.0
 pytest-asyncio>=0.21.0
