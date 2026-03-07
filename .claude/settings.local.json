@@ -51,7 +51,21 @@
       "Bash(python -c \"import tweepy; print\\(''tweepy'', tweepy.__version__, ''installed''\\)\")",
       "Bash(python -c \":*)",
       "Bash(pip install ntscraper -q)",
-      "Bash(git add requirements.txt .claude/settings.local.json)"
+      "Bash(git add requirements.txt .claude/settings.local.json)",
+      "Bash(python main.py --backtest --strategy ab --symbol NVDA --days 365)",
+      "Bash(python main.py --backtest --strategy ab --symbol MSFT --days 365)",
+      "Bash(python main.py --backtest --strategy ab --symbol AAPL --days 365)",
+      "Bash(python main.py --backtest --strategy ab --symbol JPM --days 365)",
+      "Bash(python main.py --backtest --strategy ab --symbol META --days 365)",
+      "Bash(python main.py --backtest --strategy ab --symbol GOOGL --days 365)",
+      "Bash(python main.py --backtest --strategy ab --symbol AMZN --days 365)",
+      "Bash(python main.py --backtest --strategy ab --symbol AMD --days 365)",
+      "Bash(python main.py --backtest --strategy ab --symbol TSLA --days 365)",
+      "Bash(python main.py --backtest --strategy ab --symbol V --days 365)",
+      "Bash(python main.py --backtest --strategy ab --symbol SPY --days 365)",
+      "Bash(python main.py --backtest --strategy ab --symbol QQQ --days 365)",
+      "Bash(python main.py --backtest --strategy ab --symbol TSLA --days 730)",
+      "Bash(git add src/backtesting/runner.py .claude/settings.local.json)"
     ]
   }
 }

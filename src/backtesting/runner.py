@@ -570,6 +570,12 @@ class Backtester:
         df["ema20_rising"] = ema20 > ema20.shift(3)
         df["ema20_falling"] = ema20 < ema20.shift(3)
 
+        # EMA50 slope: prevents entries right before/during a death cross.
+        # When EMA50 rolls over, the trend is weakening even if EMA20 is still above it.
+        # This eliminated correction-entry false signals seen in the 2025 bear market.
+        df["ema50_rising"] = ema50 > ema50.shift(5)
+        df["ema50_falling"] = ema50 < ema50.shift(5)
+
         # RSI recovered: RSI rising from recent low (momentum returning after pullback)
         rsi = df.get("rsi_14", pd.Series(50.0, index=df.index))
         if "rsi_14" in df.columns:
@@ -617,6 +623,8 @@ class Backtester:
         rsi_rising = bool(bar.get("rsi_rising", True))
         ema20_rising = bool(bar.get("ema20_rising", True))
         ema20_falling = bool(bar.get("ema20_falling", True))
+        ema50_rising = bool(bar.get("ema50_rising", True))
+        ema50_falling = bool(bar.get("ema50_falling", True))
 
         # Trend structure (EMA-based — more responsive than MA)
         uptrend = ema20 > 0 and ema50 > 0 and ema20 > ema50
@@ -625,31 +633,37 @@ class Backtester:
         primary_bear = ema200 > 0 and price < ema200
 
         # LONG — Primary: EMA20 pullback + bounce
-        # EMA20 must be rising: rules out entries during EMA20 rollover (early downtrend)
+        # Both EMA20 AND EMA50 must be rising — prevents entries right before/during
+        # a death cross when the trend is quietly rolling over.
         ema20_pullback = (
             near_ema20          # Within 2% of EMA20
             and bounced_ema20   # Price at or above EMA20 (not falling through)
-            and ema20_rising    # EMA20 is still pointing up (trend not reversing)
+            and ema20_rising    # EMA20 pointing up (short-term trend healthy)
+            and ema50_rising    # EMA50 also rising (medium-term trend healthy, not topping)
             and 33 <= rsi <= 57 # Pulled back but not deeply oversold
             and rsi_rising      # Momentum recovering
             and macd_hist > -0.5  # MACD not deeply negative
         )
 
         # LONG — Secondary: breakout above 20-day high with volume
-        breakout_long = is_breakout and rsi >= 48
+        breakout_long = is_breakout and rsi >= 48 and ema50_rising
 
         if uptrend and primary_bull and (ema20_pullback or breakout_long):
             return 1
 
-        # SHORT — EMA20 resistance in downtrend (EMA20 must be falling = confirmed downtrend)
+        # SHORT — EMA20 resistance in confirmed downtrend.
+        # Relaxed from price < EMA200 to price < EMA50: captures corrections where
+        # stocks have crossed below EMA50 but not yet the 200 (early correction phase).
+        short_trend = ema20 > 0 and ema50 > 0 and ema20 < ema50 and price < ema50
         ema20_short = (
             at_ema20_resistance
             and ema20_falling    # EMA20 pointing down = confirmed downtrend
+            and ema50_falling    # EMA50 also falling = medium-term trend broken
             and 52 <= rsi <= 70
             and macd_hist < 0
             and lower_high       # Structure: lower highs confirming downtrend
         )
-        if downtrend and primary_bear and ema20_short:
+        if short_trend and ema20_short:
             return -1
 
         return 0
